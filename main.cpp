@@ -209,7 +209,7 @@ int readFile(std::string fileName, Wave& wave, int n)
     return 0;
 }
 
-static void HelpMarker(const char* desc)
+void helpMarker(const char* desc)
 {
     ImGui::TextDisabled("(?)");
     if (ImGui::BeginItemTooltip())
@@ -303,51 +303,52 @@ int main()
 
             //Display input file window
             ImGui::Begin("InputWindow");
-
-            ImGui::Text("File Location");
-            ImGui::InputText("##File Location: ", file_name_buffer, 128);
-
-            ImGui::SameLine(); HelpMarker(
-                "Path relative to solution directory.\n");
-            ImGui::Spacing();
-
-            if (ImGui::Button("Submit")) {
-                if (readFile(file_name_buffer, wave, read_quanitity) == 0)   {
-                    isFileOpen = true;
-                }
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Checkbox("Performance Mode", &performance)) {
-                if (performance == true)
-                    read_quanitity = 16;
-                else
-                    read_quanitity = 1;
-                std::cout << read_quanitity << std::endl;
-            } 
-            ImGui::SameLine(); HelpMarker(
-                "Performance mode reads every 16th sample. This useful for displaying large" 
-                " files with many samples on weaker hardware."
-                " Perceptable visual loss is minimal for large files when zoomed out."
-                " Leaving this unchecked, the program will read and display all samples."
-            );
-            ImGui::Spacing();
-
-            //Some shortcuts for easier testing
-            ImGui::Spacing();
-            ImGui::Text("Shortcuts");
-            if (ImGui::Button("audio1.wav")){
-                if (readFile("test samples/Q1/audio1.wav", wave, read_quanitity) == 0) {
-                    isFileOpen = true;
-                }
-            }
-
-            if (ImGui::Button("audio2.wav"))
             {
-                if (readFile("test samples/Q1/audio2.wav", wave, read_quanitity) == 0) {
-                    isFileOpen = true;
+                ImGui::Text("File Location");
+                ImGui::InputText("##File Location: ", file_name_buffer, 128);
+
+                ImGui::SameLine(); helpMarker(
+                    "Path relative to solution directory.\n");
+                ImGui::Spacing();
+
+                if (ImGui::Button("Submit")) {
+                    if (readFile(file_name_buffer, wave, read_quanitity) == 0) {
+                        isFileOpen = true;
+                    }
                 }
-            }
+
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Performance Mode", &performance)) {
+                    if (performance == true)
+                        read_quanitity = 16;
+                    else
+                        read_quanitity = 1;
+                    std::cout << read_quanitity << std::endl;
+                }
+                ImGui::SameLine(); helpMarker(
+                    "Performance mode reads every 16th sample. This useful for displaying large"
+                    " files with many samples on weaker hardware."
+                    " Perceptable visual loss is minimal for large files when zoomed out."
+                    " Leaving this unchecked, the program will read and display all samples."
+                );
+                ImGui::Spacing();
+
+                //Some shortcuts for easier testing
+                ImGui::Spacing();
+                ImGui::Text("Shortcuts");
+                if (ImGui::Button("audio1.wav")) {
+                    if (readFile("test samples/Q1/audio1.wav", wave, read_quanitity) == 0) {
+                        isFileOpen = true;
+                    }
+                }
+
+                if (ImGui::Button("audio2.wav"))
+                {
+                    if (readFile("test samples/Q1/audio2.wav", wave, read_quanitity) == 0) {
+                        isFileOpen = true;
+                    }
+                }
+            }     
             ImGui::End();
         }
 
