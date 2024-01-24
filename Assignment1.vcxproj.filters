@@ -35,6 +35,7 @@
     <ClCompile Include="backends\imgui_impl_opengl3.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="wave.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ImGui">

@@ -4,39 +4,14 @@
 #include "libs/glfw/include/GLFW/glfw3.h"
 #include "implot.h"
 #include "implot_internal.h"
-
+#include "wave.h"
 #include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
 
 
+//Window object
 GLFWwindow* window;
-
-
-//Source for this information from http://soundfile.sapp.org/doc/WaveFormat/
-
-//Riff Chunk
-const std::string chunk_id = "RIFF";
-const std::string chunk_size = "----";
-const std::string format = "WAVE";
-
-//FMT sub-chunk
-const std::string subchunk1_id = "fmt ";
-const int subchunk1_size = 16;
-const short audio_format = 1;
-const short num_channels = 2;
-const int sample_rate = 44100;
-const int byte_rate = sample_rate * num_channels * (subchunk1_size / 8);
-const short block_align = num_channels * (subchunk1_size / 8);
-const short bits_per_sample = 16;
-
-//Data sub-chunk
-const std::string subchunk2_id = "data";
-const std::string subchunk2_size = "----";
-const int duration = 2;
-const int max_amplitude = 32760;
-const double frequency = 250;
+float displayX = 0.0f;
+float displayY = 0.0f;
 
 //Data needed for plot
 std::vector<float> amplitude_vector_channel1;
@@ -54,8 +29,13 @@ void setup()
     // Set desired depth buffer size
     glfwWindowHint(GLFW_DEPTH_BITS, 32);
 
-    // Create window with graphics context
-    window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
+    //Get monitor information
+    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    displayX = mode->width / 2;
+    displayY = mode->height / 2;
+
+    // Create window with graphics context to ensure fit on other screens
+    window = glfwCreateWindow((displayX) + (displayX * 2 * 0.10), (displayY), "Assignment 1", nullptr, nullptr);
     if (window == nullptr)
         return;
 
@@ -73,9 +53,15 @@ void setup()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
+
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
+
+    //Window Dimensions
+    std::cout << mode->width <<", " << mode->height <<  std::endl;
+    std::cout << displayX << ", " << displayY << std::endl;
+
 }
 
 void cleanup()
@@ -110,63 +96,65 @@ void write_as_bytes(std::ofstream &file, int value, int byte_size)
 
 void createFile()
 {
+    //Initialize wave object.
+    Wave wave;
     //Create Wav file
-    std::ofstream wav;
-    wav.open("test.wav", std::ios::binary);
+    std::ofstream outputFile;
+    outputFile.open("test.wav", std::ios::binary);
     //Write to wav file
-    if (wav.is_open()) {
+    if (outputFile.is_open()) {
 
         //Riff Chunk
-        wav << chunk_id;
-        wav << chunk_size;
-        wav << format;
+        outputFile << wave.chunk_id;
+        outputFile << wave.chunk_size;
+        outputFile << wave.format;
 
         //FMT sub-chunk
-        wav << subchunk1_id;
-        write_as_bytes(wav, subchunk1_size, 4);
-        write_as_bytes(wav, audio_format, 2);
-        write_as_bytes(wav, num_channels, 2);
-        write_as_bytes(wav, sample_rate, 4);
-        write_as_bytes(wav, byte_rate, 4);
-        write_as_bytes(wav, block_align, 2);
-        write_as_bytes(wav, bits_per_sample, 2);
+        outputFile << wave.subchunk1_id;
+        write_as_bytes(outputFile, wave.subchunk1_size, 4);
+        write_as_bytes(outputFile, wave.audio_format, 2);
+        write_as_bytes(outputFile, wave.num_channels, 2);
+        write_as_bytes(outputFile, wave.sample_rate, 4);
+        write_as_bytes(outputFile, wave.byte_rate, 4);
+        write_as_bytes(outputFile, wave.block_align, 2);
+        write_as_bytes(outputFile, wave.bits_per_sample, 2);
 
         //Data sub-chunk
-        wav << subchunk2_id;
-        wav << subchunk2_size;
+        outputFile << wave.subchunk2_id;
+        outputFile << wave.subchunk2_size;
 
         //Save location of previous write
-        int start_audio = wav.tellp();
+        int start_audio = outputFile.tellp();
 
         //Generate audio data
-        int number_of_samples = sample_rate * duration;
+        int number_of_samples = wave.sample_rate * wave.duration;
         for (int i = 0; i < number_of_samples; i++)
         {
-            double amplitude = (double)i / sample_rate * max_amplitude;
-            double value = sin((2 * 3.14 * i * frequency) / sample_rate);
+            double amplitude = (double)i / wave.sample_rate * wave.max_amplitude;
+            double value = sin((2 * 3.14 * i * wave.frequency) / wave.sample_rate);
 
             double channel1 = amplitude * value / 2;
-            double channel2 = (max_amplitude - amplitude) * value;
+            double channel2 = (wave.max_amplitude - amplitude) * value;
 
             //Data needed to plot
             audio_time.push_back((float)i /2);
             amplitude_vector_channel1.push_back((float)channel1);
             amplitude_vector_channel2.push_back((float)channel2);
 
-            write_as_bytes(wav, channel1, 2);
-            write_as_bytes(wav, channel2, 2);
+            write_as_bytes(outputFile, channel1, 2);
+            write_as_bytes(outputFile, channel2, 2);
         }
-        int end_audio = wav.tellp();
+        int end_audio = outputFile.tellp();
 
         //write to subchunk2_size
-        wav.seekp(start_audio - 4);
-        write_as_bytes(wav, end_audio - start_audio, 4);
+        outputFile.seekp(start_audio - 4);
+        write_as_bytes(outputFile, end_audio - start_audio, 4);
 
         //write to chunk_size
-        wav.seekp(4, std::ios::beg);
-        write_as_bytes(wav, end_audio - 8, 4);
+        outputFile.seekp(4, std::ios::beg);
+        write_as_bytes(outputFile, end_audio - 8, 4);
     }
-    wav.close();
+    outputFile.close();
 }
 
 //Helper function used to iterate until "data" is found from startPos onwards.
@@ -178,133 +166,157 @@ int findData(std::ifstream& inputFile, int startPos)
 
     //File must be open
     if (!inputFile.is_open())
-        return 0;
+        return -1;
+
+    //Get the File Size
+    inputFile.seekg(-4, std::ios::end);
+    int fileSize = inputFile.tellg();
 
     //Place cursor to desired location
     inputFile.seekg(startPos, std::ios::beg);
 
     //Seek through file to find "data". Some files have multiple "data"s. Find the one that is not followed by all zeros (some of this logic is in readFile)
-    while (!dataFound)
+    for(int i = startPos; i < fileSize; i++)
     {
         //Read 4 bytes, store values in char array
         char buffer[4];
-        inputFile.read(buffer, sizeof(buffer));
+
+        //Read 4 bytes, this moves cursor 4 bytes forwards after reading
+        inputFile.read(buffer, sizeof(buffer)); 
 
         //Check to see if buffer == "data"
         if (std::memcmp(buffer, dataPattern, 4) == 0)
+        {
             dataFound = true;
+            break;
+        }
 
-        //If data was not found, move back 3 bytes to check the next 4 byte set (important for overlapping memory addresses)
+        //If data was not found, move back 3 bytes to check the next 4 byte set
         else
             inputFile.seekg(-3, std::ios::cur);
     }
+
+    //If we reached the end of the file without finding a valid data chunk then stop the program
+    if (!dataFound)
+    {
+        std::cout << "ERROR: Read " << inputFile.tellg() << "/" << fileSize << " Bytes" << std::endl;
+        std::cout << "Valid data chunk cannot be found. Check your file and restart the program." << std::endl;
+        abort();
+    }
+
     //Save the cursor position for the start of audio data size (the chunk followed by "data")
     subchunk2SizePosition = inputFile.tellg();
-    std::cout << "Data starts at is at: " << subchunk2SizePosition << std::endl;
+    std::cout << "Data starts at is at: \t\t" << subchunk2SizePosition << std::endl;
     return subchunk2SizePosition;
 }
 
-void readFile() 
+int readFile(std::string fileName, Wave& wave)
 {
     //Open Wav file and read
     amplitude_vector_channel1.clear();
     amplitude_vector_channel2.clear();
     audio_time.clear();
 
-    std::ifstream inputFile("test samples/Q1/music.wav", std::ifstream::binary);
+    std::ifstream inputFile(fileName, std::ifstream::binary);
     if (inputFile.is_open()) 
     {
         //GET HEADER INFO
         char header[36];
+
+        //Read first 36 bytes
         inputFile.seekg(0, std::ios::beg);
         inputFile.read(header, sizeof(header));
         
-        //"fmt" sub-chunk
-        int inputSubChunk1Size = *reinterpret_cast<int*>(&header[16]);
-        int inputAudioFormat = *reinterpret_cast<short*>(&header[20]);  
-        int inputNumChannels = *reinterpret_cast<short*>(&header[22]);
-        int inputSampleRate = *reinterpret_cast<int*>(&header[24]);
-        int inputByteRate = *reinterpret_cast<int*>(&header[28]);
-        int inputBlockAlign = *reinterpret_cast<short*>(&header[32]);
-        int inputBitsPerSample = *reinterpret_cast<short*>(&header[34]);
-
-        std::cout << "Subchunk1 Size: \t\t" << inputSubChunk1Size << std::endl;
-        std::cout << "Audio Format: \t\t\t" << inputAudioFormat << std::endl;
-        std::cout << "Num Channels: \t\t\t" << inputNumChannels << std::endl;
-        std::cout << "Sample Rate: \t\t\t" << inputSampleRate << std::endl;
-        std::cout << "Byte Rate: \t\t\t" << inputByteRate << std::endl;
-        std::cout << "Block Align: \t\t\t" << inputBlockAlign << std::endl;
-        std::cout << "Bits Per Sample: \t\t" << inputBitsPerSample << std::endl;
-        std::cout << std::endl;
+        //Gather "fmt" sub-chunk info
+        wave.subchunk1_size = *reinterpret_cast<int*>(&header[16]);
+        wave.audio_format = *reinterpret_cast<short*>(&header[20]);
+        wave.num_channels = *reinterpret_cast<short*>(&header[22]);
+        wave.sample_rate = *reinterpret_cast<int*>(&header[24]);
+        wave.byte_rate = *reinterpret_cast<int*>(&header[28]);
+        wave.block_align = *reinterpret_cast<short*>(&header[32]);
+        wave.bits_per_sample = *reinterpret_cast<short*>(&header[34]);
 
         //Move to the data chunk and read it
         int subchunk2SizePosition = findData(inputFile,36);
+
+        //Create a buffer to read the data size chunk
         char dataSizeBuffer[4];
+        //Read the data chunk following "data"
         inputFile.seekg(subchunk2SizePosition, std::ios::beg);
         inputFile.read(dataSizeBuffer, sizeof(dataSizeBuffer));
-        int inputSubChunk2_Size = *reinterpret_cast<int*>(&dataSizeBuffer[0]);
-        while (inputSubChunk2_Size == 0)
+        //Convert the data chunks value to an integer
+        wave.subchunk2_size = *reinterpret_cast<int*>(&dataSizeBuffer);
+        //If that integer is 0, the file is messed up and probably has a data chunk elsewhere as seen in audio2.wav
+        while (wave.subchunk2_size == 0)
         {
             subchunk2SizePosition = findData(inputFile, subchunk2SizePosition);
             inputFile.seekg(subchunk2SizePosition, std::ios::beg);
             inputFile.read(dataSizeBuffer, sizeof(dataSizeBuffer));
-            inputSubChunk2_Size = *reinterpret_cast<int*>(&dataSizeBuffer[0]);
+            wave.subchunk2_size = *reinterpret_cast<unsigned int*>(&dataSizeBuffer);
         }
-        std::cout << "Subchunk2 Size (Bytes): " << inputSubChunk2_Size << std::endl;
         
+        wave.number_of_samples = wave.subchunk2_size / (wave.num_channels * (wave.bits_per_sample / 8));
+        wave.duration = wave.number_of_samples / wave.sample_rate;
 
-  
-        int inputNumSamples = inputSubChunk2_Size / (inputNumChannels * (inputBitsPerSample / 8));
-
-
-        // Initialize audioData size to hold the correct number of "bytes"
-        std::vector<short> audioData(inputSubChunk2_Size);
-
+        //Read every 3rd byte
+        int counter = 0;
+        char bytes[4];
+        std::vector<short> audioData;
         inputFile.seekg(subchunk2SizePosition, std::ios::beg);
-        //Read data of audio data chunk, read all inputSubChunk2_Size bytes, store them in audioData vector
-        inputFile.read(
-            reinterpret_cast<char*>(audioData.data()), 
-            inputSubChunk2_Size
-        );
 
-        //Cast the data into a float for ImGui plot compatability
-        for (int i = 0; i < audioData.size(); i++)
+        //Every 2 samples is 4 bytes. Read every n bytes where n is a multiple of 4 (skip some bytes for the sake of performance in ImPlot)
+        int n = 4;
+        if (n % 4 != 0)
+            n = 1;
+
+        while (inputFile.read(bytes, sizeof(bytes))) 
         {
-            //Each element of audioData refers to a byte
-            if(i%2 == 0)
-                amplitude_vector_channel1.push_back((float)(audioData[i]));
-            else
-                amplitude_vector_channel2.push_back((float)(audioData[i]));
+            //Read only every nth set of 4 bytes (Read every other nth sample)
+            if (counter % n == 0) 
+            {
+                amplitude_vector_channel1.push_back((float)(*reinterpret_cast<short*>(&bytes[0])));
+                amplitude_vector_channel2.push_back((float)(*reinterpret_cast<short*>(&bytes[2])));
+                audio_time.push_back(counter/wave.duration);
+            }
+            counter++;
         }
-
-        for (int i = 1; i < inputNumSamples; i++)
-            audio_time.push_back(i);
-
-
-
-
-
 
     }
     else {
-        std::cerr << "Error: Unable to open the file." << std::endl;
-        return;
+        std::cerr << "Error: Unable to open the file: " << fileName << std::endl;
+        return -1;
     }
     inputFile.close();
+    return 0;
+}
+
+static void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::BeginItemTooltip())
+    {
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
 }
 
 //Main code
 int main()
-{
-    //createFile();
-    readFile();
-    
+{ 
     //Graphical User Interface
     setup();
+
+    bool isFileOpen = false;
+    static char file_name_buffer[128] = "test samples/Q1/";
+    Wave wave;
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f); //sets the clear color for the color buffer
+        //Reset viewport
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Start the Dear ImGui frame
@@ -312,19 +324,94 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        //Channel 1 Plot
-        if (ImPlot::BeginPlot("Channel 1")) {
-            ImPlot::SetupAxes("x", "y");
-            ImPlot::PlotLine("f(x)", audio_time.data(), amplitude_vector_channel1.data(), audio_time.size());
-            ImPlot::EndPlot();
+        //Wave Form Window
+        if (isFileOpen)
+        {
+            //Set waveform window size and position
+            ImGui::SetNextWindowSize(ImVec2(displayX, displayY), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Once);
+
+            //Display waveform
+            ImGui::Begin("Wave Form");
+
+            //Channel 1 Plot
+            if (ImPlot::BeginPlot("Channel 1")) {
+                ImPlot::SetupAxes("x", "y");
+                ImPlot::PlotLine("f(x)", audio_time.data(), amplitude_vector_channel1.data(), audio_time.size());
+                ImPlot::EndPlot();
+            }
+
+            //Channel 2 Plot
+            if (ImPlot::BeginPlot("Channel 2")) {
+                ImPlot::SetupAxes("x", "y");
+                ImPlot::PlotLine("f(x)", audio_time.data(), amplitude_vector_channel2.data(), audio_time.size());
+                ImPlot::EndPlot();
+            }
+            ImGui::End();
+
+            //Set partner window size and position
+            ImGui::SetNextWindowSize(ImVec2((displayX * 2  * 0.10), displayY), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(displayX, 0), ImGuiCond_Once);
+
+            //Display file properties in a partner window
+            ImGui::Begin("Properties");
+            ImGui::Text("Subchunk1 Size: \t\t\t%i", wave.subchunk1_size);
+            ImGui::Text("Audio Format:\t\t\t\t%i", wave.audio_format);
+            ImGui::Text("Number of Channels:  \t\t%i", wave.num_channels);
+            ImGui::Text("Sample Rate:  \t\t\t%i", wave.sample_rate);
+            ImGui::Text("Byte Rate:   \t\t\t%i", wave.byte_rate);
+            ImGui::Text("Block Align: \t\t\t\t%i", wave.block_align);
+            ImGui::Text("Bits Per Sample:\t\t\t%i", wave.bits_per_sample);
+            ImGui::Text("Number of Samples:   \t%i", wave.number_of_samples);
+            ImGui::Text("Duration (s):\t\t\t\t%i", wave.duration);
+            ImGui::Spacing();
+            ImGui::Text("\nINFO:\n");
+            ImGui::Text("\nClick on wave form and drag to move.\n\nUse scroll wheel to adjust zoom.");
+
+            ImGui::End();
+
+        }
+        //Input File Window
+        else
+        {
+            //Set input file window size and position
+            ImGui::SetNextWindowSize(ImVec2(500, 200), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+
+            //Display input file window
+            ImGui::Begin("InputWindow");
+
+            ImGui::Text("File Location");
+            ImGui::InputText("##File Location: ", file_name_buffer, 128);
+
+            ImGui::SameLine(); HelpMarker(
+                "Path relative to solution directory.\n");
+            ImGui::Spacing();
+
+            if (ImGui::Button("Submit")) {
+                if (readFile(file_name_buffer, wave) == 0)   {
+                    isFileOpen = true;
+                }
+            }
+
+            //Some shortcuts for easier testing
+            ImGui::Spacing();
+            ImGui::Text("Shortcuts");
+            if (ImGui::Button("audio1.wav")){
+                if (readFile("test samples/Q1/audio1.wav", wave) == 0) {
+                    isFileOpen = true;
+                }
+            }
+
+            if (ImGui::Button("audio2.wav"))
+            {
+                if (readFile("test samples/Q1/audio2.wav", wave) == 0) {
+                    isFileOpen = true;
+                }
+            }
+            ImGui::End();
         }
 
-        //Channel 2 Plot
-        if (ImPlot::BeginPlot("Channel 2")) {
-            ImPlot::SetupAxes("x", "y");
-            ImPlot::PlotLine("f(x)", audio_time.data(), amplitude_vector_channel2.data(), audio_time.size());
-            ImPlot::EndPlot();
-        }
 
         // Rendering
         ImGui::Render();
