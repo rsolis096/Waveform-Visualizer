@@ -55,7 +55,7 @@ struct Wave {
 	//Data sub-chunk
 	std::string subchunk2_id; 
 	int subchunk2_size;
-	int duration; 
+	float duration; 
 	int max_amplitude;
 	double frequency;
 	int number_of_samples;
