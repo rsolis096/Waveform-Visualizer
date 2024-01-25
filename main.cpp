@@ -124,7 +124,7 @@ int findData(std::ifstream& inputFile, int startPos)
 }
 
 //Read the file by bytes to extract data from the .wav file
-int readFile(std::string fileName, Wave& wave, int n)
+int readFile(std::string fileName, Wave& wave, bool performance)
 {
     //Open Wav file and read
     amplitude_vector_channel1.clear();
@@ -150,11 +150,18 @@ int readFile(std::string fileName, Wave& wave, int n)
         wave.block_align = *reinterpret_cast<short*>(&header[32]);
         wave.bits_per_sample = *reinterpret_cast<short*>(&header[34]);
 
+        //The size of each sample in bytes if wave.sample_size = 4, sample size is 4, channel 1 size = 2, channel 2 size = 2
+        wave.sample_size = (wave.bits_per_sample / 8) * wave.num_channels;
+
         //Create a buffer to read the data size chunk
         char dataSizeBuffer[4];
         //Read the data chunk following "data"
         //If that integer is 0, the file is messed up and probably has a data chunk elsewhere as seen in audio2.wav
         int subchunk2SizePosition = 0;
+        
+        //Specific to assignment, audio2.wav has an issue where it has 2 "data" chunks, one is all zeros, the other has actual data.
+        //By reading the size, we can check if the size of subchunk2_size is 0, if it is no data exists. Another "data" chunk may exist
+        //so continue iterating until it is found. If its not found and all bytes are read then return an error
         while (wave.subchunk2_size == 0)
         {
             //Find the position of the "data" chunk
@@ -166,38 +173,82 @@ int readFile(std::string fileName, Wave& wave, int n)
                 return -1;
             }
             //Read the next 4 bytes (the size chunk)
-            inputFile.read(dataSizeBuffer, sizeof(dataSizeBuffer));
+            inputFile.read(dataSizeBuffer, 4);
             //Cast the value into an integer
             wave.subchunk2_size = *reinterpret_cast<int*>(&dataSizeBuffer);
         }
         
         wave.number_of_samples = wave.subchunk2_size / (wave.num_channels * (wave.bits_per_sample / 8));
-        wave.duration = wave.number_of_samples / wave.sample_rate;
+        wave.duration = (float)wave.number_of_samples / (float)wave.sample_rate;
 
-        //Read every 3rd byte
+ 
         int sampleCounter = 1;
-        char bytes[4];
+        char* bytes = new char[wave.block_align];
         inputFile.seekg(subchunk2SizePosition, std::ios::beg);
 
         //Every 2 samples is 4 bytes. Read every n bytes where n is a multiple of 4 (skip some bytes for the sake of performance due to ImPlot)
-        if (n % 4 != 0)
-            n = 1;
-
-        while (inputFile.read(bytes, sizeof(bytes))) 
+        int n = 1;
+        if (performance == true)
         {
+            n = wave.block_align * 2;
+            std::cout << "Performance Mode on, reading every " << n << " samples" << std::endl;
+        }
+
+        //This allows support for 4, 6, and 8 byte block aligns (ie 
+        short amplitude1s;
+        short amplitude2s;
+        int amplitude1i;
+        int amplitude2i;
+        float amplitude1f;
+        float amplitude2f;
+
+        int halfway_byte = wave.block_align / 2;
+        while (inputFile.read(bytes, wave.block_align)) 
+        {
+            
             //Read only every nth set of 4 bytes (Read every other nth sample)
             if (sampleCounter % n == 0) 
             {
-                //Set sample values
-                short amplitude1 = *reinterpret_cast<short*>(&bytes[0]);
-                short amplitude2 = *reinterpret_cast<short*>(&bytes[2]);
 
-                amplitude_vector_channel1.push_back(static_cast<float>(amplitude1));
-                amplitude_vector_channel2.push_back(static_cast<float>(amplitude2));
+                //Set sample values
+                switch (wave.block_align)
+                {
+                    //8-bit depth (not yet implemented)
+
+                    //16-bit depth
+                    case 4:
+                        amplitude1s = *reinterpret_cast<short*>(&bytes[0]);
+                        amplitude2s = *reinterpret_cast<short*>(&bytes[halfway_byte]);
+                        amplitude_vector_channel1.push_back(static_cast<float>(amplitude1s));
+                        amplitude_vector_channel2.push_back(static_cast<float>(amplitude2s));
+                        break;
+                    //32-bit depth
+                    case 6:
+                        //Special case: no data type of 3 bytes exist. Shifting method used instead
+                        //Little Endian (https://stackoverflow.com/questions/9896589/how-do-you-read-in-a-3-byte-size-value-as-an-integer-in-c)
+                        amplitude1i = bytes[2] + (bytes[1] << 8) + (bytes[0] << 16);
+                        amplitude2i = bytes[5] + (bytes[4] << 8) + (bytes[3] << 16);
+                        amplitude_vector_channel1.push_back(static_cast<float>(amplitude1i));
+                        amplitude_vector_channel2.push_back(static_cast<float>(amplitude2i));
+                        break;
+                    //32-bit depth
+                    case 8:
+                        amplitude1f = *reinterpret_cast<float*>(&bytes[0]);
+                        amplitude2f = *reinterpret_cast<float*>(&bytes[halfway_byte]);
+                        amplitude_vector_channel1.push_back(static_cast<float>(amplitude1f));
+                        amplitude_vector_channel2.push_back(static_cast<float>(amplitude2f));
+                        break;
+
+                }
+
                 audio_time.push_back( sampleCounter );
             }
             sampleCounter++;
         }
+
+        //Less elegant, but a more consistent way to measure time
+        wave.number_of_samples = sampleCounter;
+        wave.duration = (float)wave.number_of_samples / (float)wave.sample_rate;
 
     }
     else {
@@ -228,9 +279,9 @@ int main()
     setup();
 
     bool isFileOpen = false;
-    char file_name_buffer[256] = "test samples/Q1/";
+    static char file_name_buffer[256] = "test samples/Q1/";
+    std::string file_name = "";
     bool performance = false;
-    int read_quanitity = 1;
     Wave wave;
 
     // Main loop
@@ -253,7 +304,7 @@ int main()
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Once);
 
             //Display waveform
-            ImGui::Begin("Wave Form");
+            ImGui::Begin(("Wave Form of: "+ file_name).c_str() );
             {
                 //Channel 1 Plot
                 if (ImPlot::BeginPlot("Channel 1")) {
@@ -278,18 +329,29 @@ int main()
             //Display file properties in a partner window
             ImGui::Begin("Properties");
             {
-                ImGui::Text("Subchunk1 Size: \t\t\t%i", wave.subchunk1_size);
-                ImGui::Text("Audio Format:\t\t\t\t%i", wave.audio_format);
-                ImGui::Text("Number of Channels:  \t\t%i", wave.num_channels);
-                ImGui::Text("Sample Rate:  \t\t\t%i", wave.sample_rate);
-                ImGui::Text("Byte Rate:   \t\t\t%i", wave.byte_rate);
-                ImGui::Text("Block Align: \t\t\t\t%i", wave.block_align);
-                ImGui::Text("Bits Per Sample:\t\t\t%i", wave.bits_per_sample);
-                ImGui::Text("Number of Samples:   \t%i", wave.number_of_samples);
-                ImGui::Text("Duration (s): \t\t\t%.2f", wave.duration);
+                ImGui::Text("Subchunk1 Size:  \t\t\t\t%i", wave.subchunk1_size);
+                ImGui::Text("Audio Format: \t\t\t\t\t%i", wave.audio_format);
+                ImGui::Text("Number of Channels:   \t\t\t%i", wave.num_channels);
+                ImGui::Text("Sample Rate (kHz): \t\t\t%i", wave.sample_rate);
+                ImGui::Text("Byte Rate:    \t\t\t\t%i", wave.byte_rate);
+                ImGui::Text("Bytes Per Sample: \t\t\t\t%i", wave.block_align);
+                ImGui::Text("Bits Per Sample: \t\t\t\t%i", wave.bits_per_sample);
+                ImGui::Text("Number of Samples:    \t\t%i", wave.number_of_samples);
+                ImGui::Text("Duration (s): \t\t\t\t%f", wave.duration);
                 ImGui::Spacing();
                 ImGui::Text("\nINFO:\n");
                 ImGui::Text("\nClick on wave form and drag to move.\n\nUse scroll wheel to adjust zoom.");
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Text("Return To File Select");
+                if (ImGui::Button("Return"))
+                    isFileOpen = false;
+
+
             }
             ImGui::End();
 
@@ -305,26 +367,21 @@ int main()
             ImGui::Begin("InputWindow");
             {
                 ImGui::Text("File Location");
-                ImGui::InputText("##File Location: ", file_name_buffer, 128);
-
+                if (ImGui::InputText("##File Location: ", file_name_buffer, 256))
+                    file_name = file_name_buffer;
                 ImGui::SameLine(); helpMarker(
                     "Path relative to solution directory.\n");
                 ImGui::Spacing();
 
                 if (ImGui::Button("Submit")) {
-                    if (readFile(file_name_buffer, wave, read_quanitity) == 0) {
+                    if (readFile(file_name_buffer, wave, performance) == 0) {
                         isFileOpen = true;
                     }
                 }
 
                 ImGui::SameLine();
-                if (ImGui::Checkbox("Performance Mode", &performance)) {
-                    if (performance == true)
-                        read_quanitity = 16;
-                    else
-                        read_quanitity = 1;
-                    std::cout << read_quanitity << std::endl;
-                }
+                ImGui::Checkbox("Performance Mode", &performance);
+             
                 ImGui::SameLine(); helpMarker(
                     "Performance mode reads every 16th sample. This useful for displaying large"
                     " files with many samples on weaker hardware."
@@ -337,14 +394,16 @@ int main()
                 ImGui::Spacing();
                 ImGui::Text("Shortcuts");
                 if (ImGui::Button("audio1.wav")) {
-                    if (readFile("test samples/Q1/audio1.wav", wave, read_quanitity) == 0) {
+                    if (readFile("test samples/Q1/audio1.wav", wave, performance) == 0) {
+                        file_name = "test samples/Q1/audio1.wav";
                         isFileOpen = true;
                     }
                 }
 
                 if (ImGui::Button("audio2.wav"))
                 {
-                    if (readFile("test samples/Q1/audio2.wav", wave, read_quanitity) == 0) {
+                    if (readFile("test samples/Q1/audio2.wav", wave, performance) == 0) {
+                        file_name = "test samples/Q1/audio2.wav";
                         isFileOpen = true;
                     }
                 }

@@ -35,6 +35,7 @@ struct Wave {
 
 		//Extra
 		number_of_samples = 0;
+		sample_size = 0;
 	}
 
 	//Riff Chunk
@@ -59,5 +60,6 @@ struct Wave {
 	int max_amplitude;
 	double frequency;
 	int number_of_samples;
+	int sample_size;
 };
 
