@@ -278,14 +278,14 @@ int main()
     //Setup Graphical User Interface
     setup();
 
-    bool isFileOpen = false;
+    bool is_file_open = false;
     static char file_name_buffer[256] = "test samples/Q1/";
     std::string file_name = "";
     bool performance = false;
     Wave wave;
 
     // Main loop        
-
+    bool failed_to_load = false;
     while (!glfwWindowShouldClose(window))
     {
         //Reset viewport
@@ -298,7 +298,7 @@ int main()
         ImGui::NewFrame();
 
         //Wave Form Window
-        if (isFileOpen)
+        if (is_file_open)
         {
             //Set waveform window size and position
             ImGui::SetNextWindowSize(ImVec2(displayX, displayY), ImGuiCond_Once);
@@ -352,7 +352,7 @@ int main()
                 ImGui::Spacing();
                 ImGui::Text("Return To File Select");
                 if (ImGui::Button("Return"))
-                    isFileOpen = false;
+                    is_file_open = false;
 
 
             }
@@ -378,11 +378,18 @@ int main()
 
                 if (ImGui::Button("Submit")) {
                     if (readFile(file_name_buffer, wave, performance) == 0) {
-                        isFileOpen = true;
+                        is_file_open = true;
+                        failed_to_load = false;
+                    }
+                    else
+                    {
+                        failed_to_load = true;
                     }
                 }
 
                 ImGui::SameLine();
+                if(failed_to_load)
+                    ImGui::Text("Failed to load. Check the file path and try again.");
                 /*
                 ImGui::Checkbox("Performance Mode", &performance);
              
@@ -401,17 +408,29 @@ int main()
                 if (ImGui::Button("audio1.wav")) {
                     if (readFile("test samples/Q1/audio1.wav", wave, performance) == 0) {
                         file_name = "test samples/Q1/audio1.wav";
-                        isFileOpen = true;
+                        is_file_open = true;
+                        failed_to_load = false;
+                    }
+                    else
+                    {
+                        failed_to_load = true;
                     }
                 }
 
+                ImGui::SameLine();
                 if (ImGui::Button("audio2.wav"))
                 {
                     if (readFile("test samples/Q1/audio2.wav", wave, performance) == 0) {
                         file_name = "test samples/Q1/audio2.wav";
-                        isFileOpen = true;
+                        is_file_open = true;
+                        failed_to_load = false;
+                    }
+                    else
+                    {
+                        failed_to_load = true;
                     }
                 }
+                
             }     
             ImGui::End();
         }
