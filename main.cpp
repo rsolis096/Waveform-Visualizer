@@ -332,15 +332,15 @@ int main()
             //Display file properties in a partner window
             ImGui::Begin("Properties");
             {
-                ImGui::Text("Subchunk1 Size:  \t\t\t\t%i", wave.subchunk1_size);
-                ImGui::Text("Audio Format: \t\t\t\t\t%i", wave.audio_format);
-                ImGui::Text("Number of Channels:   \t\t\t%i", wave.num_channels);
-                ImGui::Text("Sample Rate (kHz): \t\t\t%i", wave.sample_rate);
-                ImGui::Text("Byte Rate:    \t\t\t\t%i", wave.byte_rate);
-                ImGui::Text("Bytes Per Sample: \t\t\t\t%i", wave.block_align);
-                ImGui::Text("Bits Per Sample: \t\t\t\t%i", wave.bits_per_sample);
-                ImGui::Text("Number of Samples:    \t\t%i", wave.number_of_samples);
-                ImGui::Text("Duration (s): \t\t\t\t%f", wave.duration);
+                ImGui::Text("Subchunk1 Size:\n%i", wave.subchunk1_size);
+                ImGui::Text("Audio Format:\n%i", wave.audio_format);
+                ImGui::Text("Number of Channels:\n%i", wave.num_channels);
+                ImGui::Text("Sample Rate (kHz):\n%i", wave.sample_rate);
+                ImGui::Text("Byte Rate:\n%i", wave.byte_rate);
+                ImGui::Text("Bytes Per Sample:\n%i", wave.block_align);
+                ImGui::Text("Bits Per Sample:\n%i", wave.bits_per_sample);
+                ImGui::Text("Number of Samples:\n%i", wave.number_of_samples);
+                ImGui::Text("Duration (s):\n%f", wave.duration);
                 ImGui::Spacing();
                 ImGui::Text("\nINFO:\n");
                 ImGui::Text("\nClick on wave form and drag to move.\n\nUse scroll wheel to adjust zoom.");
@@ -373,7 +373,7 @@ int main()
                 if (ImGui::InputText("##File Location: ", file_name_buffer, 256))
                     file_name = file_name_buffer;
                 ImGui::SameLine(); helpMarker(
-                    "Path relative to solution directory.\n");
+                    "Path relative to exe or solution directory.\n");
                 ImGui::Spacing();
 
                 if (ImGui::Button("Submit")) {
