@@ -284,11 +284,12 @@ int main()
     bool performance = false;
     Wave wave;
 
-    // Main loop
+    // Main loop        
+
     while (!glfwWindowShouldClose(window))
     {
         //Reset viewport
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Start the Dear ImGui frame
@@ -306,6 +307,7 @@ int main()
             //Display waveform
             ImGui::Begin(("Wave Form of: "+ file_name).c_str() );
             {
+
                 //Channel 1 Plot
                 if (ImPlot::BeginPlot("Channel 1")) {
                     ImPlot::SetupAxes("Samples", "Amplitude");
@@ -319,6 +321,7 @@ int main()
                     ImPlot::PlotLine("", audio_time.data(), amplitude_vector_channel2.data(), audio_time.size());
                     ImPlot::EndPlot();
                 }
+
             }
             ImGui::End();
 
@@ -380,6 +383,7 @@ int main()
                 }
 
                 ImGui::SameLine();
+                /*
                 ImGui::Checkbox("Performance Mode", &performance);
              
                 ImGui::SameLine(); helpMarker(
@@ -389,6 +393,7 @@ int main()
                     " Leaving this unchecked, the program will read and display all samples."
                 );
                 ImGui::Spacing();
+                */
 
                 //Some shortcuts for easier testing
                 ImGui::Spacing();

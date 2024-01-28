@@ -72,9 +72,9 @@
     <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
-    <IncludePath>$(IncludePath)</IncludePath>
+    <OutDir>$(SolutionDir)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)includes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
@@ -82,9 +82,9 @@
     <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
-    <IncludePath>$(IncludePath)</IncludePath>
+    <OutDir>$(SolutionDir)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)includes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -107,6 +107,7 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)libs\glfw\include;$(SolutionDir)backends;$(SolutionDir)includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -143,19 +144,20 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..;..\..\backends;..\libs\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)includes;$(SolutionDir)backends;$(SolutionDir)libs\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\libs\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\glfw\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opengl32.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <SubSystem>Console</SubSystem>
-      <IgnoreSpecificDefaultLibraries>
-      </IgnoreSpecificDefaultLibraries>
+      <SubSystem>Windows</SubSystem>
+      <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
