@@ -186,14 +186,6 @@ int readFile(std::string fileName, Wave& wave, bool performance)
         char* bytes = new char[wave.block_align];
         inputFile.seekg(subchunk2SizePosition, std::ios::beg);
 
-        //Every 2 samples is 4 bytes. Read every n bytes where n is a multiple of 4 (skip some bytes for the sake of performance due to ImPlot)
-        int n = 1;
-        if (performance == true)
-        {
-            n = wave.block_align * 2;
-            std::cout << "Performance Mode on, reading every " << n << " samples" << std::endl;
-        }
-
         //This allows support for 4, 6, and 8 byte block aligns (ie 
         short amplitude1s;
         short amplitude2s;
@@ -205,44 +197,37 @@ int readFile(std::string fileName, Wave& wave, bool performance)
         int halfway_byte = wave.block_align / 2;
         while (inputFile.read(bytes, wave.block_align)) 
         {
-            
-            //Read only every nth set of 4 bytes (Read every other nth sample)
-            if (sampleCounter % n == 0) 
+            //Set sample values
+            switch (wave.block_align)
             {
+                //8-bit depth (not yet implemented)
 
-                //Set sample values
-                switch (wave.block_align)
-                {
-                    //8-bit depth (not yet implemented)
+                //16-bit depth
+                case 4:
+                    amplitude1s = *reinterpret_cast<short*>(&bytes[0]);
+                    amplitude2s = *reinterpret_cast<short*>(&bytes[halfway_byte]);
+                    amplitude_vector_channel1.push_back(static_cast<float>(amplitude1s));
+                    amplitude_vector_channel2.push_back(static_cast<float>(amplitude2s));
+                    break;
+                //32-bit depth
+                case 6:
+                    //Special case: no data type of 3 bytes exist. Shifting method used instead
+                    //Little Endian (https://stackoverflow.com/questions/9896589/how-do-you-read-in-a-3-byte-size-value-as-an-integer-in-c)
+                    amplitude1i = bytes[2] + (bytes[1] << 8) + (bytes[0] << 16);
+                    amplitude2i = bytes[5] + (bytes[4] << 8) + (bytes[3] << 16);
+                    amplitude_vector_channel1.push_back(static_cast<float>(amplitude1i));
+                    amplitude_vector_channel2.push_back(static_cast<float>(amplitude2i));
+                    break;
+                //32-bit depth
+                case 8:
+                    amplitude1f = *reinterpret_cast<float*>(&bytes[0]);
+                    amplitude2f = *reinterpret_cast<float*>(&bytes[halfway_byte]);
+                    amplitude_vector_channel1.push_back(static_cast<float>(amplitude1f));
+                    amplitude_vector_channel2.push_back(static_cast<float>(amplitude2f));
+                    break;
 
-                    //16-bit depth
-                    case 4:
-                        amplitude1s = *reinterpret_cast<short*>(&bytes[0]);
-                        amplitude2s = *reinterpret_cast<short*>(&bytes[halfway_byte]);
-                        amplitude_vector_channel1.push_back(static_cast<float>(amplitude1s));
-                        amplitude_vector_channel2.push_back(static_cast<float>(amplitude2s));
-                        break;
-                    //32-bit depth
-                    case 6:
-                        //Special case: no data type of 3 bytes exist. Shifting method used instead
-                        //Little Endian (https://stackoverflow.com/questions/9896589/how-do-you-read-in-a-3-byte-size-value-as-an-integer-in-c)
-                        amplitude1i = bytes[2] + (bytes[1] << 8) + (bytes[0] << 16);
-                        amplitude2i = bytes[5] + (bytes[4] << 8) + (bytes[3] << 16);
-                        amplitude_vector_channel1.push_back(static_cast<float>(amplitude1i));
-                        amplitude_vector_channel2.push_back(static_cast<float>(amplitude2i));
-                        break;
-                    //32-bit depth
-                    case 8:
-                        amplitude1f = *reinterpret_cast<float*>(&bytes[0]);
-                        amplitude2f = *reinterpret_cast<float*>(&bytes[halfway_byte]);
-                        amplitude_vector_channel1.push_back(static_cast<float>(amplitude1f));
-                        amplitude_vector_channel2.push_back(static_cast<float>(amplitude2f));
-                        break;
-
-                }
-
-                audio_time.push_back( sampleCounter );
             }
+            audio_time.push_back( sampleCounter );    
             sampleCounter++;
         }
 
@@ -390,17 +375,6 @@ int main()
                 ImGui::SameLine();
                 if(failed_to_load)
                     ImGui::Text("Failed to load. Check the file path and try again.");
-                /*
-                ImGui::Checkbox("Performance Mode", &performance);
-             
-                ImGui::SameLine(); helpMarker(
-                    "Performance mode reads every 16th sample. This useful for displaying large"
-                    " files with many samples on weaker hardware."
-                    " Perceptable visual loss is minimal for large files when zoomed out."
-                    " Leaving this unchecked, the program will read and display all samples."
-                );
-                ImGui::Spacing();
-                */
 
                 //Some shortcuts for easier testing
                 ImGui::Spacing();
