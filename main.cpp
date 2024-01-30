@@ -141,6 +141,13 @@ int readFile(std::string fileName, Wave& wave, bool performance)
         inputFile.seekg(0, std::ios::beg);
         inputFile.read(header, sizeof(header));
         
+        //Check if the file is WAVE
+        char file_type[5];
+        std::copy(&header[8], &header[8]+4, file_type);
+        file_type[4] = '\0';
+        if (std::string(file_type) != "WAVE")
+            return -1;
+
         //Gather "fmt" sub-chunk info
         wave.subchunk1_size = *reinterpret_cast<int*>(&header[16]);
         wave.audio_format = *reinterpret_cast<short*>(&header[20]);
