@@ -303,7 +303,7 @@ int main()
 
             //Set waveform window size and position
             ImGui::SetNextWindowSize(ImVec2(displayX, (displayY/2.0)), ImGuiCond_Once);
-            ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
             
             //Display waveform
             ImGui::Begin("Channel 1");
@@ -314,9 +314,8 @@ int main()
                 float scaleFactorY = (windowSize.y * 0.8) / *std::max_element(amplitude_vector_channel1.begin(), amplitude_vector_channel1.end());
                 ImVec2 windowCenter = ImVec2(windowSize.x / 2.0f, windowSize.y / 2.0f);
 
+                //Plot points, draw line
                 for (int i = 0; i < audio_time.size() - 1; ++i) {
-
-
                     ImGui::GetWindowDrawList()->AddLine(
                         ImVec2(audio_time[i] * scaleFactorX, -1.0f * (amplitude_vector_channel1[i] * scaleFactorY/2) + windowCenter.y),
                         ImVec2(audio_time[i + 1] * scaleFactorX, -1.0f * (amplitude_vector_channel1[i + 1] * scaleFactorY/2) + windowCenter.y),
@@ -329,7 +328,7 @@ int main()
 
             //Set waveform window size and position
             ImGui::SetNextWindowSize(ImVec2(displayX, displayY / 2), ImGuiCond_Once);
-            ImGui::SetNextWindowPos(ImVec2(0, displayY/2), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(0, displayY/2), ImGuiCond_Always);
 
             ImGui::Begin("Channel 2");
             {
@@ -339,7 +338,7 @@ int main()
                 float scaleFactorY = (windowSize.y * 0.8) / *std::max_element(amplitude_vector_channel2.begin(), amplitude_vector_channel2.end());
                 ImVec2 windowCenter = ImVec2(windowSize.x / 2.0f, windowSize.y / 2.0f);
 
-
+                //Plot points, draw line
                 for (int i = 0; i < audio_time.size() - 1; ++i) {
                     ImGui::GetWindowDrawList()->AddLine(
                         //Scale and flip signs of amplitude to fit scale for window
@@ -360,6 +359,7 @@ int main()
             //Display file properties in a partner window
             ImGui::Begin("Properties");
             {
+                ImGui::Text("File: \n%s", file_name.c_str());
                 ImGui::Text("Subchunk1 Size:\n%i", wave.subchunk1_size);
                 ImGui::Text("Audio Format:\n%i", wave.audio_format);
                 ImGui::Text("Number of Channels:\n%i", wave.num_channels);
