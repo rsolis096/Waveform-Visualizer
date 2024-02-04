@@ -124,13 +124,18 @@ int findData(std::ifstream& inputFile, int startPos)
 }
 
 //Read the file by bytes to extract data from the .wav file
-int readFile(std::string fileName, Wave& wave, bool performance)
+int readFile(std::string fileName, Wave& wave)
 {
-    //Open Wav file and read
-    amplitude_vector_channel1.clear();
-    amplitude_vector_channel2.clear();
-    audio_time.clear();
+    //Clear previous vectors
+    std::vector<float> dumb1;
+    std::vector<float> dumb2;
+    std::vector<float> dumb3;
 
+    swap(dumb2,amplitude_vector_channel1);
+    swap(dumb3,amplitude_vector_channel2);
+    swap(dumb1, audio_time);
+
+    //Open Wav file and read
     std::ifstream inputFile(fileName, std::ifstream::binary);
     if (inputFile.is_open()) 
     {
@@ -147,6 +152,7 @@ int readFile(std::string fileName, Wave& wave, bool performance)
         file_type[4] = '\0';
         if (std::string(file_type) != "WAVE")
             return -1;
+
 
         //Gather "fmt" sub-chunk info
         wave.subchunk1_size = *reinterpret_cast<int*>(&header[16]);
@@ -241,14 +247,13 @@ int readFile(std::string fileName, Wave& wave, bool performance)
         //Less elegant, but a more consistent way to measure time
         wave.number_of_samples = sampleCounter;
         wave.duration = (float)wave.number_of_samples / (float)wave.sample_rate;
-
+        std::cout << "Loaded Succesfully" << std::endl;
     }
     else {
         std::cerr << "Error: Unable to open the file: " << fileName << std::endl;
         return -1;
     }
     inputFile.close();
-    std::cout << "Loaded Succesfully" << std::endl;
     return 0;
 }
 
@@ -273,11 +278,12 @@ int main()
     bool is_file_open = false;
     static char file_name_buffer[256] = "test samples/Q1/";
     std::string file_name = "";
-    bool performance = false;
     Wave wave;
 
     // Main loop        
     bool failed_to_load = false;
+    ImVec2 windowSize(0.0f, 0.0f);
+
     while (!glfwWindowShouldClose(window))
     {
         //Reset viewport
@@ -289,37 +295,67 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        //ImPlot::ShowDemoWindow();
+        
         //Wave Form Window
         if (is_file_open)
-        {
+        {   
+
             //Set waveform window size and position
-            ImGui::SetNextWindowSize(ImVec2(displayX, displayY), ImGuiCond_Once);
+            ImGui::SetNextWindowSize(ImVec2(displayX, (displayY/2.0)), ImGuiCond_Once);
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Once);
-
+            
             //Display waveform
-            ImGui::Begin(("Wave Form of: "+ file_name).c_str() );
+            ImGui::Begin("Channel 1");
             {
+                // Scale factor to fit the points within the window
+                windowSize = ImGui::GetWindowSize();
+                float scaleFactorX = windowSize.x / audio_time.size();
+                float scaleFactorY = (windowSize.y * 0.8) / *std::max_element(amplitude_vector_channel1.begin(), amplitude_vector_channel1.end());
+                ImVec2 windowCenter = ImVec2(windowSize.x / 2.0f, windowSize.y / 2.0f);
 
-                //Channel 1 Plot
-                if (ImPlot::BeginPlot("Channel 1")) {
-                    ImPlot::SetupAxes("Samples", "Amplitude");
-                    ImPlot::PlotLine("", audio_time.data(), amplitude_vector_channel1.data(), audio_time.size());
-                    ImPlot::EndPlot();
+                for (int i = 0; i < audio_time.size() - 1; ++i) {
+
+
+                    ImGui::GetWindowDrawList()->AddLine(
+                        ImVec2(audio_time[i] * scaleFactorX, -1.0f * (amplitude_vector_channel1[i] * scaleFactorY/2) + windowCenter.y),
+                        ImVec2(audio_time[i + 1] * scaleFactorX, -1.0f * (amplitude_vector_channel1[i + 1] * scaleFactorY/2) + windowCenter.y),
+                        IM_COL32(200, 200, 200, 255)
+                    );
+                }
+            }
+            ImGui::End();
+
+
+            //Set waveform window size and position
+            ImGui::SetNextWindowSize(ImVec2(displayX, displayY / 2), ImGuiCond_Once);
+            ImGui::SetNextWindowPos(ImVec2(0, displayY/2), ImGuiCond_Once);
+
+            ImGui::Begin("Channel 2");
+            {
+                // Scale factor to fit the points within the window
+                windowSize = ImGui::GetWindowSize();
+                float scaleFactorX = windowSize.x / audio_time.size();
+                float scaleFactorY = (windowSize.y * 0.8) / *std::max_element(amplitude_vector_channel2.begin(), amplitude_vector_channel2.end());
+                ImVec2 windowCenter = ImVec2(windowSize.x / 2.0f, windowSize.y / 2.0f);
+
+
+                for (int i = 0; i < audio_time.size() - 1; ++i) {
+                    ImGui::GetWindowDrawList()->AddLine(
+                        //Scale and flip signs of amplitude to fit scale for window
+                        ImVec2((audio_time[i] * scaleFactorX), -1.0f * (amplitude_vector_channel2[i] * scaleFactorY/2) + (displayY /2) + (windowCenter.y)),
+                        ImVec2((audio_time[i + 1] * scaleFactorX), -1.0f * (amplitude_vector_channel2[i + 1] * scaleFactorY/2) + (displayY / 2) + (windowCenter.y)),
+                        IM_COL32(200, 200, 200, 255)
+                    );
                 }
 
-                //Channel 2 Plot
-                if (ImPlot::BeginPlot("Channel 2")) {
-                    ImPlot::SetupAxes("Samples", "Amplitude");
-                    ImPlot::PlotLine("", audio_time.data(), amplitude_vector_channel2.data(), audio_time.size());
-                    ImPlot::EndPlot();
-                }
 
             }
             ImGui::End();
 
             //Set partner window size and position
-            ImGui::SetNextWindowSize(ImVec2((displayX * 2  * 0.10), displayY), ImGuiCond_Once);
-            ImGui::SetNextWindowPos(ImVec2(displayX, 0), ImGuiCond_Once);
+            ImGui::SetNextWindowSize(ImVec2((displayX * 2  * 0.10), displayY), ImGuiCond_Always);
+            ImGui::SetNextWindowPos(ImVec2(displayX, 0), ImGuiCond_Always);
 
             //Display file properties in a partner window
             ImGui::Begin("Properties");
@@ -334,22 +370,19 @@ int main()
                 ImGui::Text("Number of Samples:\n%i", wave.number_of_samples);
                 ImGui::Text("Duration (s):\n%f", wave.duration);
                 ImGui::Spacing();
-                ImGui::Text("\nINFO:\n");
-                ImGui::Text("\nClick on wave form and drag to move.\n\nUse scroll wheel to adjust zoom.");
-                ImGui::Spacing();
-                ImGui::Spacing();
-                ImGui::Spacing();
-                ImGui::Spacing();
-                ImGui::Spacing();
                 ImGui::Spacing();
                 ImGui::Text("Return To File Select");
                 if (ImGui::Button("Return"))
+                {   
                     is_file_open = false;
-
+                    file_name = "";
+                    wave.reset();
+                }
+            
 
             }
             ImGui::End();
-
+            
         }
         //Input File Window
         else
@@ -369,7 +402,7 @@ int main()
                 ImGui::Spacing();
 
                 if (ImGui::Button("Submit")) {
-                    if (readFile(file_name_buffer, wave, performance) == 0) {
+                    if (readFile(file_name_buffer, wave) == 0) {
                         is_file_open = true;
                         failed_to_load = false;
                     }
@@ -387,7 +420,7 @@ int main()
                 ImGui::Spacing();
                 ImGui::Text("Shortcuts");
                 if (ImGui::Button("audio1.wav")) {
-                    if (readFile("test samples/Q1/audio1.wav", wave, performance) == 0) {
+                    if (readFile("test samples/Q1/audio1.wav", wave) == 0) {
                         file_name = "test samples/Q1/audio1.wav";
                         is_file_open = true;
                         failed_to_load = false;
@@ -401,7 +434,7 @@ int main()
                 ImGui::SameLine();
                 if (ImGui::Button("audio2.wav"))
                 {
-                    if (readFile("test samples/Q1/audio2.wav", wave, performance) == 0) {
+                    if (readFile("test samples/Q1/audio2.wav", wave) == 0) {
                         file_name = "test samples/Q1/audio2.wav";
                         is_file_open = true;
                         failed_to_load = false;
@@ -415,10 +448,13 @@ int main()
             }     
             ImGui::End();
         }
-
+        
 
         // Rendering
         ImGui::Render();
+
+
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);

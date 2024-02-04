@@ -295,7 +295,7 @@ void Demo_LinePlots() {
         xs2[i] = i * 1/19.0f;
         ys2[i] = xs2[i] * xs2[i];
     }
-    if (ImPlot::BeginPlot("Line Plots")) {
+    if (ImPlot::BeginPlot("Line Plots!!1")) {
         ImPlot::SetupAxes("x","y");
         ImPlot::PlotLine("f(x)", xs1, ys1, 1001);
         ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
